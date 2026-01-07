@@ -1,30 +1,52 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Container from "../components/Container.jsx";
-import { fetchBookings } from "../api/bookingsApi.js";
+import { fetchBookings, cancelBooking } from "../api/bookingsApi.js";
 
 export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancellingId, setCancellingId] = useState(null);
+
+  async function loadBookings() {
+    try {
+      setError("");
+      setLoading(true);
+      const data = await fetchBookings();
+      setBookings(Array.isArray(data.bookings) ? data.bookings : []);
+    } catch (e) {
+      setError(e.message || "Failed to load bookings");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        setLoading(true);
-        const data = await fetchBookings();
-        if (mounted) setBookings(data.bookings || []);
-      } catch (e) {
-        if (mounted) setError(e.message || "Failed to load bookings");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => (mounted = false);
+    loadBookings();
   }, []);
+
+  async function onCancel(id) {
+    const ok = window.confirm("Cancel this booking?");
+    if (!ok) return;
+
+    try {
+      setError("");
+      setCancellingId(id);
+
+      const res = await cancelBooking(id); // calls PATCH /api/bookings/:id/cancel
+      const updated = res.booking;
+
+      // Update UI immediately (no need to refetch)
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: updated.status } : b))
+      );
+    } catch (e) {
+      setError(e.message || "Failed to cancel booking");
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   return (
     <Container>
@@ -32,7 +54,7 @@ export default function MyBookings() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">My Bookings</h1>
           <p className="mt-1 text-sm text-slate-600">
-            All confirmed bookings created in this session.
+            All bookings stored in the system.
           </p>
         </div>
         <Link
@@ -64,32 +86,60 @@ export default function MyBookings() {
                 <th className="px-5 py-3 font-semibold">Guest</th>
                 <th className="px-5 py-3 font-semibold">Room</th>
                 <th className="px-5 py-3 font-semibold">Dates</th>
+                <th className="px-5 py-3 font-semibold">Status</th>
                 <th className="px-5 py-3 font-semibold text-right">Total</th>
-                <th className="px-5 py-3 font-semibold"></th>
+                <th className="px-5 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
-                <tr key={b.id} className="border-t">
-                  <td className="px-5 py-4 font-medium text-slate-900">{b.id}</td>
-                  <td className="px-5 py-4 text-slate-700">{b.guest.fullName}</td>
-                  <td className="px-5 py-4 text-slate-700">{b.room.name}</td>
-                  <td className="px-5 py-4 text-slate-700">
-                    {b.stay.checkIn} → {b.stay.checkOut}
-                  </td>
-                  <td className="px-5 py-4 text-right font-semibold text-slate-900">
-                    ${b.pricing.total.toFixed(2)}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <Link
-                      to={`/receipt/${b.id}`}
-                      className="rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      Receipt
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {bookings.map((b) => {
+                const isConfirmed = b.status === "confirmed";
+                const isCancelling = cancellingId === b.id;
+
+                return (
+                  <tr key={b.id} className="border-t">
+                    <td className="px-5 py-4 font-medium text-slate-900">{b.id}</td>
+                    <td className="px-5 py-4 text-slate-700">{b.guest.fullName}</td>
+                    <td className="px-5 py-4 text-slate-700">{b.room.name}</td>
+                    <td className="px-5 py-4 text-slate-700">
+                      {b.stay.checkIn} → {b.stay.checkOut}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={
+                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold " +
+                          (b.status === "confirmed"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-slate-100 text-slate-700")
+                        }
+                      >
+                        {b.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right font-semibold text-slate-900">
+                      ${Number(b.pricing?.total || 0).toFixed(2)}
+                    </td>
+                    <td className="px-5 py-4 text-right space-x-2">
+                      <Link
+                        to={`/receipt/${b.id}`}
+                        className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        Receipt
+                      </Link>
+
+                      {isConfirmed ? (
+                        <button
+                          onClick={() => onCancel(b.id)}
+                          disabled={isCancelling}
+                          className="inline-block rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          {isCancelling ? "Cancelling…" : "Cancel"}
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

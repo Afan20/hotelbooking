@@ -1,17 +1,21 @@
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPost, apiPatch } from "./client.js";
+import { getToken } from "../auth/authStorage.js";
 
 export function createBooking(payload) {
-  return apiPost("/api/bookings", payload);
+  return apiPost("/api/bookings", payload, getToken());
 }
 
 export function fetchBooking(bookingId) {
-  return apiGet(`/api/bookings/${bookingId}`);
+  return apiGet(`/api/bookings/${bookingId}`, getToken());
 }
+
 export function fetchBookings() {
-  return apiGet("/api/bookings");
+  return apiGet("/api/bookings", getToken());
 }
+
 export function cancelBooking(id) {
-  return apiPatch(`/api/bookings/${id}/cancel`, {});
+  return apiPatch(`/api/bookings/${id}/cancel`, {}, getToken());
 }
+
 
 

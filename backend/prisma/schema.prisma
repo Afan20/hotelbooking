@@ -8,39 +8,55 @@ datasource db {
 }
 
 model Room {
-  id           String   @id @default(cuid())
-  name         String
-  type         String
-  capacity     Int
+  id            String   @id @default(cuid())
+  name          String
+  type          String
+  capacity      Int
   pricePerNight Int
-  features     String   // store as JSON string for simplicity
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  features      String   // JSON string for simplicity
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  bookings     Booking[]
+  bookings      Booking[]
 }
 
 model Booking {
-  id          String   @id @default(cuid())
-  status      String   @default("confirmed") // confirmed | cancelled
+  id              String   @id @default(cuid())
+  status          String   @default("confirmed") // confirmed | cancelled
 
-  guestFullName String
-  guestEmail    String
-  guestPhone    String?
+  guestFullName   String
+  guestEmail      String
+  guestPhone      String?
 
-  checkIn     String
-  checkOut    String
-  guests      Int
+  checkIn         String
+  checkOut        String
+  guests          Int
   specialRequests String?
 
-  nights      Int
-  subtotal    Float
-  tax         Float
-  total       Float
+  nights          Int
 
-  roomId      String
-  room        Room     @relation(fields: [roomId], references: [id])
+  // money
+  subtotal        Float
+  tax             Float
+  total           Float
 
-  createdAt   DateTime @default(now())
+  // discounts (new)
+  discountPercent Float   @default(0)
+  discountAmount  Float   @default(0)
+
+  roomId          String
+  room            Room     @relation(fields: [roomId], references: [id])
+
+  createdAt       DateTime @default(now())
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   // "admin" | "receptionist"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
