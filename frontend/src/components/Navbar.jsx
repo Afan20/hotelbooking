@@ -6,9 +6,11 @@ import { getToken, clearToken } from "../auth/authStorage.js";
 export default function Navbar() {
   const navigate = useNavigate();
   const token = getToken();
+  const role = localStorage.getItem("hotel_staff_role"); // ✅ add
 
   function logout() {
     clearToken();
+    localStorage.removeItem("hotel_staff_role"); // ✅ add
     navigate("/login");
   }
 
@@ -30,9 +32,21 @@ export default function Navbar() {
                 <Link to="/rooms" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                   Rooms
                 </Link>
+
                 <Link to="/bookings" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                   My Bookings
                 </Link>
+
+                {/* ✅ Admin-only link */}
+                {role === "admin" ? (
+                  <Link
+                    to="/admin/rooms"
+                    className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Admin
+                  </Link>
+                ) : null}
+
                 <button
                   onClick={logout}
                   className="rounded-lg border px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"

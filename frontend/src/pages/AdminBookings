@@ -1,0 +1,202 @@
+import React, { useEffect, useState } from "react";
+import Container from "../components/Container.jsx";
+import {
+  adminFetchBookings,
+  adminEditBooking,
+  adminCheckoutBooking,
+} from "../api/adminApi.js";
+
+export default function AdminBookings() {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [editingId, setEditingId] = useState(null);
+  const [checkoutId, setCheckoutId] = useState(null);
+
+  async function loadBookings() {
+    try {
+      setError("");
+      setLoading(true);
+      const data = await adminFetchBookings();
+      setBookings(Array.isArray(data.bookings) ? data.bookings : []);
+    } catch (e) {
+      setError(e.message || "Failed to load admin bookings");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  function statusBadgeClass(status) {
+    if (status === "confirmed") return "bg-emerald-50 text-emerald-700";
+    if (status === "checked_out") return "bg-blue-50 text-blue-700";
+    if (status === "cancelled") return "bg-slate-100 text-slate-700";
+    return "bg-slate-100 text-slate-700";
+  }
+
+  async function onEdit(b) {
+    const currentIn = b?.stay?.checkIn || "";
+    const currentOut = b?.stay?.checkOut || "";
+
+    const nextCheckIn = window.prompt(
+      "New check-in date (YYYY-MM-DD):",
+      currentIn
+    );
+    if (!nextCheckIn) return;
+
+    const nextCheckOut = window.prompt(
+      "New check-out date (YYYY-MM-DD):",
+      currentOut
+    );
+    if (!nextCheckOut) return;
+
+    try {
+      setError("");
+      setEditingId(b.id);
+
+      const res = await adminEditBooking(b.id, {
+        checkIn: nextCheckIn,
+        checkOut: nextCheckOut,
+      });
+
+      if (res?.booking) {
+        setBookings((prev) => prev.map((x) => (x.id === b.id ? res.booking : x)));
+      } else {
+        // fallback if backend returns ok:true only
+        await loadBookings();
+      }
+    } catch (e) {
+      setError(e.message || "Failed to edit booking");
+    } finally {
+      setEditingId(null);
+    }
+  }
+
+  async function onCheckout(b) {
+    const ok = window.confirm(`Checkout booking #${b.id}?`);
+    if (!ok) return;
+
+    try {
+      setError("");
+      setCheckoutId(b.id);
+
+      const res = await adminCheckoutBooking(b.id);
+
+      if (res?.booking) {
+        setBookings((prev) => prev.map((x) => (x.id === b.id ? res.booking : x)));
+      } else {
+        // fallback if backend returns ok:true only
+        setBookings((prev) =>
+          prev.map((x) => (x.id === b.id ? { ...x, status: "checked_out" } : x))
+        );
+      }
+    } catch (e) {
+      setError(e.message || "Failed to checkout booking");
+    } finally {
+      setCheckoutId(null);
+    }
+  }
+
+  return (
+    <Container>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Admin Bookings</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Edit and checkout bookings (admin only).
+          </p>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-8 text-sm text-slate-600">Loading bookings…</div>
+      ) : bookings.length === 0 ? (
+        <div className="mt-6 rounded-2xl border bg-white p-6 text-sm text-slate-700">
+          No bookings found.
+        </div>
+      ) : (
+        <div className="mt-6 overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-700">
+              <tr>
+                <th className="px-5 py-3 font-semibold">Booking ID</th>
+                <th className="px-5 py-3 font-semibold">Guest</th>
+                <th className="px-5 py-3 font-semibold">Room</th>
+                <th className="px-5 py-3 font-semibold">Dates</th>
+                <th className="px-5 py-3 font-semibold">Status</th>
+                <th className="px-5 py-3 font-semibold text-right">Total</th>
+                <th className="px-5 py-3 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {bookings.map((b) => {
+                const isConfirmed = b.status === "confirmed";
+                const isEditing = editingId === b.id;
+                const isCheckingOut = checkoutId === b.id;
+
+                return (
+                  <tr key={b.id} className="border-t">
+                    <td className="px-5 py-4 font-medium text-slate-900">{b.id}</td>
+                    <td className="px-5 py-4 text-slate-700">{b.guest?.fullName}</td>
+                    <td className="px-5 py-4 text-slate-700">{b.room?.name}</td>
+                    <td className="px-5 py-4 text-slate-700">
+                      {b.stay?.checkIn} → {b.stay?.checkOut}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={
+                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold " +
+                          statusBadgeClass(b.status)
+                        }
+                      >
+                        {b.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right font-semibold text-slate-900">
+                      ${Number(b.pricing?.total || 0).toFixed(2)}
+                    </td>
+
+                    <td className="px-5 py-4 text-right space-x-2">
+                      {isConfirmed ? (
+                        <>
+                          <button
+                            onClick={() => onEdit(b)}
+                            disabled={isEditing || isCheckingOut}
+                            className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            {isEditing ? "Editing…" : "Edit"}
+                          </button>
+
+                          <button
+                            onClick={() => onCheckout(b)}
+                            disabled={isCheckingOut || isEditing}
+                            className="inline-block rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+                          >
+                            {isCheckingOut ? "Checking out…" : "Checkout"}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-slate-500">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Container>
+  );
+}

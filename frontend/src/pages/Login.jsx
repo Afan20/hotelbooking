@@ -1,13 +1,15 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Container from "../components/Container.jsx";
 import { apiPost } from "../api/client.js";
 import { setToken } from "../auth/authStorage.js";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || "/rooms";
 
-  const [email, setEmail] = useState("receptionist");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -16,11 +18,21 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await apiPost("/api/auth/login", { email, password });
+      const res = await apiPost("/api/auth/login", {
+        email: email.trim(),
+        password,
+      });
+
+      if (!res?.token) throw new Error("Login failed");
       setToken(res.token);
-      navigate("/rooms");
+      navigate(from, { replace: true });
     } catch (e) {
       setError(e.message || "Login failed");
     } finally {
@@ -33,58 +45,28 @@ export default function Login() {
       <Container>
         <div className="mx-auto mt-16 w-full max-w-md">
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h1 className="text-xl font-semibold text-slate-900">Staff Login</h1>
-              <p className="mt-1 text-sm text-slate-600">
-                Sign in to access bookings and rooms.
-              </p>
-            </div>
-
-            {error ? (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            ) : null}
-
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  email
-                </label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  placeholder="e.g. receptionist"
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  placeholder="Enter password"
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-                />
-              </div>
-
+            <h1 className="text-xl font-semibold text-slate-900">Staff Login</h1>
+            <form onSubmit={onSubmit} className="space-y-4 mt-4">
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="w-full border px-3 py-2 rounded-xl"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full border px-3 py-2 rounded-xl"
+              />
               <button
-                type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full bg-slate-900 text-white py-2 rounded-xl"
               >
                 {loading ? "Signing in..." : "Sign in"}
               </button>
-
-              <div className="text-xs text-slate-500">
-                Uses the receptionist credentials configured in the backend <code>.env</code>.
-              </div>
+              {error && <p className="text-red-600 text-sm">{error}</p>}
             </form>
           </div>
         </div>

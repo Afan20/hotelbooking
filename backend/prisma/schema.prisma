@@ -23,7 +23,9 @@ model Room {
 
 model Booking {
   id              String   @id @default(cuid())
-  status          String   @default("confirmed") // confirmed | cancelled
+ status          String   @default("confirmed") // confirmed | cancelled | checked_out
+ checkedOutAt    DateTime?
+
 
   guestFullName   String
   guestEmail      String

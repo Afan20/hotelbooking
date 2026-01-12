@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Container from "../components/Container.jsx";
-import { fetchBookings, cancelBooking } from "../api/bookingsApi.js";
+import { fetchBookings, cancelBooking, extendBooking } from "../api/bookingsApi.js"; // ✅ add
 
 export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState(null);
+  const [extendingId, setExtendingId] = useState(null); // ✅ add
 
   async function loadBookings() {
     try {
@@ -34,10 +35,9 @@ export default function MyBookings() {
       setError("");
       setCancellingId(id);
 
-      const res = await cancelBooking(id); // calls PATCH /api/bookings/:id/cancel
+      const res = await cancelBooking(id);
       const updated = res.booking;
 
-      // Update UI immediately (no need to refetch)
       setBookings((prev) =>
         prev.map((b) => (b.id === id ? { ...b, status: updated.status } : b))
       );
@@ -45,6 +45,28 @@ export default function MyBookings() {
       setError(e.message || "Failed to cancel booking");
     } finally {
       setCancellingId(null);
+    }
+  }
+
+  // ✅ add
+  async function onExtend(b) {
+    // simplest MVP prompt
+    const newDate = window.prompt("Enter new check-out date (YYYY-MM-DD):", b.stay?.checkOut || "");
+    if (!newDate) return;
+
+    try {
+      setError("");
+      setExtendingId(b.id);
+
+      const res = await extendBooking(b.id, newDate);
+      const updated = res.booking;
+
+      // Replace the entire booking row with the updated one
+      setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)));
+    } catch (e) {
+      setError(e.message || "Failed to extend booking");
+    } finally {
+      setExtendingId(null);
     }
   }
 
@@ -95,6 +117,7 @@ export default function MyBookings() {
               {bookings.map((b) => {
                 const isConfirmed = b.status === "confirmed";
                 const isCancelling = cancellingId === b.id;
+                const isExtending = extendingId === b.id;
 
                 return (
                   <tr key={b.id} className="border-t">
@@ -127,10 +150,21 @@ export default function MyBookings() {
                         Receipt
                       </Link>
 
+                      {/* ✅ Extend button for confirmed bookings */}
+                      {isConfirmed ? (
+                        <button
+                          onClick={() => onExtend(b)}
+                          disabled={isExtending || isCancelling}
+                          className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          {isExtending ? "Extending…" : "Extend"}
+                        </button>
+                      ) : null}
+
                       {isConfirmed ? (
                         <button
                           onClick={() => onCancel(b.id)}
-                          disabled={isCancelling}
+                          disabled={isCancelling || isExtending}
                           className="inline-block rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                         >
                           {isCancelling ? "Cancelling…" : "Cancel"}

@@ -8,7 +8,7 @@ const router = Router();
 router.get("/", requireAuth, requireRole("receptionist", "admin"), async (req, res) => {
   try {
     const rooms = await listRooms();
-    res.json({ rooms });
+    res.json({ ok: true, rooms });
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
   }

@@ -1,21 +1,14 @@
-import { apiGet, apiPost, apiDelete } from "./client.js";
+import { apiPost, apiPatch, apiDelete } from "./client.js";
+import { getToken } from "../auth/authStorage.js";
 
-export function adminLogin(email, password) {
-  return apiPost("/api/admin/login", { email, password });
+export function adminCreateRoom(payload) {
+  return apiPost("/api/admin/rooms", payload, getToken());
 }
 
-export function adminFetchBookings(token) {
-  return apiGet("/api/admin/bookings", token);
+export function adminDeactivateRoom(id) {
+  return apiDelete(`/api/admin/rooms/${id}`, getToken());
 }
 
-export function adminCreateRoom(token, payload) {
-  return apiPost("/api/admin/rooms", payload, token);
-}
-
-export function adminDeleteRoom(token, roomId) {
-  return apiDelete(`/api/admin/rooms/${roomId}`, token);
-}
-
-export function adminDeleteBooking(token, bookingId) {
-  return apiDelete(`/api/admin/bookings/${bookingId}`, token);
+export function adminUpdateRoomPrice(id, pricePerNight) {
+  return apiPatch(`/api/admin/rooms/${id}/price`, { pricePerNight }, getToken());
 }

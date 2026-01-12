@@ -10,6 +10,8 @@ import MyBookings from "./pages/MyBookings.jsx";
 import Login from "./pages/Login.jsx";
 
 import RequireAuth from "./auth/RequireAuth.jsx";
+import RequireRole from "./auth/RequireRole.jsx"; // ✅ add
+import AdminRooms from "./pages/AdminRooms.jsx"; // ✅ add
 
 export default function App() {
   return (
@@ -29,6 +31,19 @@ export default function App() {
             </RequireAuth>
           }
         />
+
+        {/* ✅ Protected (admin only) */}
+        <Route
+          path="/admin/rooms"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["admin"]}>
+                <AdminRooms />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+
         <Route
           path="/confirmation/:bookingId"
           element={
@@ -59,4 +74,3 @@ export default function App() {
     </div>
   );
 }
-
