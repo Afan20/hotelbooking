@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Container from "../components/Container.jsx";
 import {
   adminFetchBookings,
@@ -11,7 +11,12 @@ export default function AdminBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [editingId, setEditingId] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editCheckIn, setEditCheckIn] = useState("");
+  const [editCheckOut, setEditCheckOut] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const [checkoutId, setCheckoutId] = useState(null);
 
   async function loadBookings() {
@@ -34,45 +39,61 @@ export default function AdminBookings() {
   function statusBadgeClass(status) {
     if (status === "confirmed") return "bg-emerald-50 text-emerald-700";
     if (status === "checked_out") return "bg-blue-50 text-blue-700";
-    if (status === "cancelled") return "bg-slate-100 text-slate-700";
     return "bg-slate-100 text-slate-700";
   }
 
-  async function onEdit(b) {
-    const currentIn = b?.stay?.checkIn || "";
-    const currentOut = b?.stay?.checkOut || "";
+  const editingBooking = useMemo(() => {
+    if (!editId) return null;
+    return bookings.find((b) => b.id === editId) || null;
+  }, [bookings, editId]);
 
-    const nextCheckIn = window.prompt(
-      "New check-in date (YYYY-MM-DD):",
-      currentIn
-    );
-    if (!nextCheckIn) return;
+  function openEdit(b) {
+    setError("");
+    setEditId(b.id);
+    setEditCheckIn(b?.stay?.checkIn || "");
+    setEditCheckOut(b?.stay?.checkOut || "");
+    setEditOpen(true);
+  }
 
-    const nextCheckOut = window.prompt(
-      "New check-out date (YYYY-MM-DD):",
-      currentOut
-    );
-    if (!nextCheckOut) return;
+  function closeEdit() {
+    setEditOpen(false);
+    setEditId(null);
+    setEditCheckIn("");
+    setEditCheckOut("");
+    setSavingEdit(false);
+  }
+
+  async function saveEdit(e) {
+    e.preventDefault();
+    if (!editId) return;
+
+    if (!editCheckIn || !editCheckOut) {
+      setError("Please select both check-in and check-out dates.");
+      return;
+    }
 
     try {
       setError("");
-      setEditingId(b.id);
+      setSavingEdit(true);
 
-      const res = await adminEditBooking(b.id, {
-        checkIn: nextCheckIn,
-        checkOut: nextCheckOut,
+      const res = await adminEditBooking(editId, {
+        checkIn: editCheckIn,
+        checkOut: editCheckOut,
       });
 
       if (res?.booking) {
-        setBookings((prev) => prev.map((x) => (x.id === b.id ? res.booking : x)));
+        setBookings((prev) =>
+          prev.map((x) => (x.id === editId ? res.booking : x))
+        );
       } else {
-        // fallback if backend returns ok:true only
+        // backend returned ok:true only
         await loadBookings();
       }
-    } catch (e) {
-      setError(e.message || "Failed to edit booking");
-    } finally {
-      setEditingId(null);
+
+      closeEdit();
+    } catch (e2) {
+      setError(e2.message || "Failed to edit booking");
+      setSavingEdit(false);
     }
   }
 
@@ -107,7 +128,7 @@ export default function AdminBookings() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Admin Bookings</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Edit and checkout bookings (admin only).
+            Admin-only booking management: edit dates and checkout.
           </p>
         </div>
       </div>
@@ -142,7 +163,6 @@ export default function AdminBookings() {
             <tbody>
               {bookings.map((b) => {
                 const isConfirmed = b.status === "confirmed";
-                const isEditing = editingId === b.id;
                 const isCheckingOut = checkoutId === b.id;
 
                 return (
@@ -166,21 +186,19 @@ export default function AdminBookings() {
                     <td className="px-5 py-4 text-right font-semibold text-slate-900">
                       ${Number(b.pricing?.total || 0).toFixed(2)}
                     </td>
-
                     <td className="px-5 py-4 text-right space-x-2">
                       {isConfirmed ? (
                         <>
                           <button
-                            onClick={() => onEdit(b)}
-                            disabled={isEditing || isCheckingOut}
-                            className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                            onClick={() => openEdit(b)}
+                            className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                           >
-                            {isEditing ? "Editing…" : "Edit"}
+                            Edit
                           </button>
 
                           <button
                             onClick={() => onCheckout(b)}
-                            disabled={isCheckingOut || isEditing}
+                            disabled={isCheckingOut}
                             className="inline-block rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
                           >
                             {isCheckingOut ? "Checking out…" : "Checkout"}
@@ -197,6 +215,72 @@ export default function AdminBookings() {
           </table>
         </div>
       )}
+
+      {/* Edit Modal */}
+      {editOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+          <div className="w-full max-w-lg rounded-2xl border bg-white p-6 shadow-lg">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Edit Booking</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Booking #{editingBooking?.id} — update check-in/check-out dates.
+                </p>
+              </div>
+              <button
+                onClick={closeEdit}
+                className="rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={saveEdit} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Check-in
+                </label>
+                <input
+                  type="date"
+                  value={editCheckIn}
+                  onChange={(e) => setEditCheckIn(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Check-out
+                </label>
+                <input
+                  type="date"
+                  value={editCheckOut}
+                  onChange={(e) => setEditCheckOut(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeEdit}
+                  disabled={savingEdit}
+                  className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {savingEdit ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </Container>
   );
 }

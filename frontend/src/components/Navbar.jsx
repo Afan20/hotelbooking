@@ -1,16 +1,17 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Container from "./Container.jsx";
 import { getToken, clearToken } from "../auth/authStorage.js";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  useLocation(); // ensures Navbar re-renders on navigation (login/logout)
   const token = getToken();
-  const role = localStorage.getItem("hotel_staff_role"); // ✅ add
+  const role = localStorage.getItem("hotel_staff_role");
 
   function logout() {
     clearToken();
-    localStorage.removeItem("hotel_staff_role"); // ✅ add
+    localStorage.removeItem("hotel_staff_role");
     navigate("/login");
   }
 
@@ -37,16 +38,23 @@ export default function Navbar() {
                   My Bookings
                 </Link>
 
-                {/* ✅ Admin-only link */}
                 {role === "admin" ? (
-                  <Link
-                    to="/admin/rooms"
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Admin
-                  </Link>
-                ) : null}
+                 <>
+                   <Link
+                     to="/admin/bookings"
+                     className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                   >
+                     Admin Bookings
+                   </Link>
 
+                   <Link
+                     to="/admin/rooms"
+                     className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                     >
+                     Admin Rooms
+                   </Link>
+                 </>
+               ) : null}
                 <button
                   onClick={logout}
                   className="rounded-lg border px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"

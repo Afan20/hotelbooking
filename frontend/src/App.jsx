@@ -8,10 +8,10 @@ import Confirmation from "./pages/Confirmation.jsx";
 import Receipt from "./pages/Receipt.jsx";
 import MyBookings from "./pages/MyBookings.jsx";
 import Login from "./pages/Login.jsx";
-
+import AdminRooms from "./pages/AdminRooms.jsx";
 import RequireAuth from "./auth/RequireAuth.jsx";
-import RequireRole from "./auth/RequireRole.jsx"; // ✅ add
-import AdminRooms from "./pages/AdminRooms.jsx"; // ✅ add
+import RequireRole from "./auth/RequireRole.jsx";
+import AdminBookings from "./pages/AdminBookings.jsx";
 
 export default function App() {
   return (
@@ -31,19 +31,6 @@ export default function App() {
             </RequireAuth>
           }
         />
-
-        {/* ✅ Protected (admin only) */}
-        <Route
-          path="/admin/rooms"
-          element={
-            <RequireAuth>
-              <RequireRole roles={["admin"]}>
-                <AdminRooms />
-              </RequireRole>
-            </RequireAuth>
-          }
-        />
-
         <Route
           path="/confirmation/:bookingId"
           element={
@@ -65,6 +52,28 @@ export default function App() {
           element={
             <RequireAuth>
               <MyBookings />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/rooms"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["admin"]}>
+                <AdminRooms />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
+
+        {/* Admin only */}
+        <Route
+          path="/admin/bookings"
+          element={
+            <RequireAuth>
+              <RequireRole roles={["admin"]}>
+                <AdminBookings />
+              </RequireRole>
             </RequireAuth>
           }
         />

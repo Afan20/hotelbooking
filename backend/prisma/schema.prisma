@@ -23,9 +23,8 @@ model Room {
 
 model Booking {
   id              String   @id @default(cuid())
- status          String   @default("confirmed") // confirmed | cancelled | checked_out
- checkedOutAt    DateTime?
-
+  status          String   @default("confirmed") // confirmed | cancelled | checked_out
+  checkedOutAt    DateTime?
 
   guestFullName   String
   guestEmail      String
@@ -43,7 +42,7 @@ model Booking {
   tax             Float
   total           Float
 
-  // discounts (new)
+  // discounts
   discountPercent Float   @default(0)
   discountAmount  Float   @default(0)
 
@@ -52,6 +51,7 @@ model Booking {
 
   createdAt       DateTime @default(now())
 }
+
 
 model User {
   id           String   @id @default(cuid())

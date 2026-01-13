@@ -1,97 +1,9 @@
 import { prisma } from "../db/prisma.js";
 import { calcNights } from "../utils/pricing.js";
 
-// Admin: create room
-export async function adminCreateRoom(payload) {
-  const { name, type, capacity, pricePerNight, features } = payload || {};
-
-  if (!name || !type || capacity == null || pricePerNight == null) {
-    throw new Error("Missing required room fields");
-  }
-
-  const room = await prisma.room.create({
-    data: {
-      name,
-      type,
-      capacity: Number(capacity),
-      pricePerNight: Number(pricePerNight),
-      features: JSON.stringify(features || []),
-      isActive: true,
-    },
-  });
-
-  return { ...room, features: safeParseJsonArray(room.features) };
-}
-
-// Admin: deactivate room (soft delete)
-export async function adminDeactivateRoom(roomId) {
-  if (!roomId) throw new Error("Missing roomId");
-
-  await prisma.room.update({
-    where: { id: roomId },
-    data: { isActive: false },
-  });
-
-  return true;
-}
-
-// Admin: update room price
-export async function adminUpdateRoomPrice(roomId, pricePerNight) {
-  if (!roomId) throw new Error("Missing roomId");
-  if (pricePerNight == null) throw new Error("Missing pricePerNight");
-
-  const room = await prisma.room.update({
-    where: { id: roomId },
-    data: { pricePerNight: Number(pricePerNight) },
-  });
-
-  return { ...room, features: safeParseJsonArray(room.features) };
-}
-
 /**
- * Optional admin ops (keep only if you truly need them)
+ * Helpers
  */
-export async function adminListBookings() {
-  const bookings = await prisma.booking.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { room: true },
-  });
-
-  // You can also reuse bookingService.normalizeBooking here if you export it,
-  // but keeping this simple for now to avoid changing bookingService exports.
-  return bookings.map((b) => ({
-    id: b.id,
-    status: b.status,
-    createdAt: b.createdAt,
-    guest: { fullName: b.guestFullName, email: b.guestEmail, phone: b.guestPhone },
-    stay: { checkIn: b.checkIn, checkOut: b.checkOut, guests: b.guests },
-    room: { ...b.room, features: safeParseJsonArray(b.room.features) },
-    pricing: {
-      nights: b.nights,
-      subtotal: b.subtotal,
-      tax: b.tax,
-      total: b.total,
-      discountPercent: b.discountPercent ?? 0,
-      discountAmount: b.discountAmount ?? 0,
-    },
-    specialRequests: b.specialRequests,
-  }));
-}
-
-export async function adminHardDeleteBooking(bookingId) {
-  if (!bookingId) throw new Error("Missing bookingId");
-  await prisma.booking.delete({ where: { id: bookingId } });
-  return true;
-}
-
-function safeParseJsonArray(value) {
-  try {
-    const parsed = JSON.parse(value || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 const TAX_RATE = 0.10;
 
 function money(n) {
@@ -113,9 +25,18 @@ function computeTotals(pricePerNight, nights, discountPercent) {
   };
 }
 
+function safeParseJsonArray(value) {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Overlap check: blocks only "confirmed"
- * Excludes current booking id during edit
+ * Overlap check must block ONLY confirmed bookings.
+ * Excludes current booking id during edits.
  */
 async function assertRoomAvailable(roomId, checkIn, checkOut, excludeBookingId) {
   const overlapping = await prisma.booking.findFirst({
@@ -140,8 +61,7 @@ function normalizeBooking(b) {
     id: b.id,
     status: b.status,
     createdAt: b.createdAt,
-    // optional field; harmless to frontend if unused
-    checkedOutAt: b.checkedOutAt ?? null,
+    checkedOutAt: b.checkedOutAt ?? null, // safe extra field for frontend
     guest: {
       fullName: b.guestFullName,
       email: b.guestEmail,
@@ -164,6 +84,99 @@ function normalizeBooking(b) {
     specialRequests: b.specialRequests,
   };
 }
+
+/**
+ * Admin: create room
+ */
+export async function adminCreateRoom(payload) {
+  const { name, type, capacity, pricePerNight, features } = payload || {};
+
+  if (!name || !type || capacity == null || pricePerNight == null) {
+    throw new Error("Missing required room fields");
+  }
+
+  const room = await prisma.room.create({
+    data: {
+      name,
+      type,
+      capacity: Number(capacity),
+      pricePerNight: Number(pricePerNight),
+      features: JSON.stringify(features || []),
+      isActive: true,
+    },
+  });
+
+  return { ...room, features: safeParseJsonArray(room.features) };
+}
+
+/**
+ * Admin: deactivate room (soft delete)
+ */
+export async function adminDeactivateRoom(roomId) {
+  if (!roomId) throw new Error("Missing roomId");
+
+  await prisma.room.update({
+    where: { id: roomId },
+    data: { isActive: false },
+  });
+
+  return true;
+}
+
+/**
+ * Admin: update room price
+ */
+export async function adminUpdateRoomPrice(roomId, pricePerNight) {
+  if (!roomId) throw new Error("Missing roomId");
+  if (pricePerNight == null) throw new Error("Missing pricePerNight");
+
+  const room = await prisma.room.update({
+    where: { id: roomId },
+    data: { pricePerNight: Number(pricePerNight) },
+  });
+
+  return { ...room, features: safeParseJsonArray(room.features) };
+}
+
+/**
+ * Optional admin ops (keep only if you truly need them)
+ */
+export async function adminListBookings() {
+  const bookings = await prisma.booking.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { room: true },
+  });
+
+  return bookings.map((b) => ({
+    id: b.id,
+    status: b.status,
+    createdAt: b.createdAt,
+    checkedOutAt: b.checkedOutAt ?? null,
+    guest: { fullName: b.guestFullName, email: b.guestEmail, phone: b.guestPhone },
+    stay: { checkIn: b.checkIn, checkOut: b.checkOut, guests: b.guests },
+    room: { ...b.room, features: safeParseJsonArray(b.room.features) },
+    pricing: {
+      nights: b.nights,
+      subtotal: b.subtotal,
+      tax: b.tax,
+      total: b.total,
+      discountPercent: b.discountPercent ?? 0,
+      discountAmount: b.discountAmount ?? 0,
+    },
+    specialRequests: b.specialRequests,
+  }));
+}
+
+export async function adminHardDeleteBooking(bookingId) {
+  if (!bookingId) throw new Error("Missing bookingId");
+  await prisma.booking.delete({ where: { id: bookingId } });
+  return true;
+}
+
+/**
+ * Admin: edit booking
+ * PATCH /api/admin/bookings/:id
+ */
 export async function adminEditBooking(bookingId, patch = {}) {
   if (!bookingId) throw new Error("Missing bookingId");
 
@@ -173,16 +186,16 @@ export async function adminEditBooking(bookingId, patch = {}) {
   });
   if (!existing) throw new Error("Booking not found");
 
-  // Block editing cancelled or checked_out
+  // Must be confirmed
   if (existing.status !== "confirmed") {
     throw new Error("Only confirmed bookings can be edited.");
   }
 
-  // Determine new values (MVP: checkIn/checkOut optional)
+  // Allow partial by falling back to existing values
   const nextCheckIn = patch.checkIn ?? existing.checkIn;
   const nextCheckOut = patch.checkOut ?? existing.checkOut;
 
-  // Validate date format
+  // Validate date format & range
   const inDate = new Date(nextCheckIn);
   const outDate = new Date(nextCheckOut);
   if (Number.isNaN(inDate.getTime()) || Number.isNaN(outDate.getTime())) {
@@ -192,7 +205,7 @@ export async function adminEditBooking(bookingId, patch = {}) {
     throw new Error("Check-out must be after check-in.");
   }
 
-  // Guests validation (recommended)
+  // Optional edits
   const nextGuests = patch.guests == null ? existing.guests : Number(patch.guests);
   if (!Number.isFinite(nextGuests) || nextGuests < 1) {
     throw new Error("Guests must be at least 1.");
@@ -201,9 +214,10 @@ export async function adminEditBooking(bookingId, patch = {}) {
     throw new Error(`Guests cannot exceed room capacity (${existing.room.capacity}).`);
   }
 
-  // Discount validation (basic admin guardrails)
   const nextDiscountPercent =
-    patch.discountPercent == null ? Number(existing.discountPercent || 0) : Number(patch.discountPercent);
+    patch.discountPercent == null
+      ? Number(existing.discountPercent || 0)
+      : Number(patch.discountPercent);
 
   if (!Number.isFinite(nextDiscountPercent) || nextDiscountPercent < 0) {
     throw new Error("Invalid discount percent.");
@@ -212,16 +226,15 @@ export async function adminEditBooking(bookingId, patch = {}) {
     throw new Error("Discount too high.");
   }
 
-  // Overlap check excluding current booking id
-  await assertRoomAvailable(existing.roomId, nextCheckIn, nextCheckOut, existing.id);
-
-  // Recompute nights and totals
-  const nights = calcNights(nextCheckIn, nextCheckOut);
-  const pricing = computeTotals(existing.room.pricePerNight, nights, nextDiscountPercent);
-
-  // Apply remaining optional edits
   const nextSpecialRequests =
     patch.specialRequests === undefined ? existing.specialRequests : (patch.specialRequests || "");
+
+  // Overlap check excluding this booking
+  await assertRoomAvailable(existing.roomId, nextCheckIn, nextCheckOut, existing.id);
+
+  // Recompute totals exactly like booking service style
+  const nights = calcNights(nextCheckIn, nextCheckOut);
+  const pricing = computeTotals(existing.room.pricePerNight, nights, nextDiscountPercent);
 
   const updated = await prisma.booking.update({
     where: { id: existing.id },
@@ -243,6 +256,10 @@ export async function adminEditBooking(bookingId, patch = {}) {
   return normalizeBooking(updated);
 }
 
+/**
+ * Admin: checkout booking
+ * PATCH /api/admin/bookings/:id/checkout
+ */
 export async function adminCheckoutBooking(bookingId) {
   if (!bookingId) throw new Error("Missing bookingId");
 
@@ -267,6 +284,3 @@ export async function adminCheckoutBooking(bookingId) {
 
   return normalizeBooking(updated);
 }
-
-
-

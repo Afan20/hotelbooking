@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Container from "../components/Container.jsx";
-import { fetchBookings, cancelBooking, extendBooking } from "../api/bookingsApi.js"; // ✅ add
+import { fetchBookings, cancelBooking } from "../api/bookingsApi.js";
 
 export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState(null);
-  const [extendingId, setExtendingId] = useState(null); // ✅ add
 
   async function loadBookings() {
     try {
@@ -48,26 +47,10 @@ export default function MyBookings() {
     }
   }
 
-  // ✅ add
-  async function onExtend(b) {
-    // simplest MVP prompt
-    const newDate = window.prompt("Enter new check-out date (YYYY-MM-DD):", b.stay?.checkOut || "");
-    if (!newDate) return;
-
-    try {
-      setError("");
-      setExtendingId(b.id);
-
-      const res = await extendBooking(b.id, newDate);
-      const updated = res.booking;
-
-      // Replace the entire booking row with the updated one
-      setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)));
-    } catch (e) {
-      setError(e.message || "Failed to extend booking");
-    } finally {
-      setExtendingId(null);
-    }
+  function statusBadgeClass(status) {
+    if (status === "confirmed") return "bg-emerald-50 text-emerald-700";
+    if (status === "checked_out") return "bg-blue-50 text-blue-700";
+    return "bg-slate-100 text-slate-700";
   }
 
   return (
@@ -117,7 +100,6 @@ export default function MyBookings() {
               {bookings.map((b) => {
                 const isConfirmed = b.status === "confirmed";
                 const isCancelling = cancellingId === b.id;
-                const isExtending = extendingId === b.id;
 
                 return (
                   <tr key={b.id} className="border-t">
@@ -131,9 +113,7 @@ export default function MyBookings() {
                       <span
                         className={
                           "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold " +
-                          (b.status === "confirmed"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-slate-100 text-slate-700")
+                          statusBadgeClass(b.status)
                         }
                       >
                         {b.status}
@@ -150,21 +130,10 @@ export default function MyBookings() {
                         Receipt
                       </Link>
 
-                      {/* ✅ Extend button for confirmed bookings */}
-                      {isConfirmed ? (
-                        <button
-                          onClick={() => onExtend(b)}
-                          disabled={isExtending || isCancelling}
-                          className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-                        >
-                          {isExtending ? "Extending…" : "Extend"}
-                        </button>
-                      ) : null}
-
                       {isConfirmed ? (
                         <button
                           onClick={() => onCancel(b.id)}
-                          disabled={isCancelling || isExtending}
+                          disabled={isCancelling}
                           className="inline-block rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                         >
                           {isCancelling ? "Cancelling…" : "Cancel"}
