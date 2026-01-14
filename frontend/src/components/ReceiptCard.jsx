@@ -62,9 +62,9 @@ export default function ReceiptCard({ booking }) {
         </div>
 
         <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          <div className="font-semibold">Aurora Hotel</div>
-          <div className="text-slate-600">123 Business Ave</div>
-          <div className="text-slate-600">support@aurorahotel.com</div>
+          <div className="font-semibold">Wah Continental Hotel</div>
+          <div className="text-slate-600">GT road, Wah Cantt</div>
+          <div className="text-slate-600">wahcontinentalhotel@gmail.com</div>
         </div>
       </div>
 
