@@ -69,6 +69,47 @@ function validateDiscountByRole(discountPercent, role) {
   return d;
 }
 
+function validateGuestIdentity(payload) {
+  const guestTypeRaw = String(payload.guestType || "pakistani").toLowerCase();
+  const guestType = guestTypeRaw === "foreign" ? "foreign" : "pakistani";
+
+  let guestIdCardNumber = payload.guestIdCardNumber
+    ? String(payload.guestIdCardNumber).trim()
+    : null;
+
+  let guestNationality = payload.guestNationality
+    ? String(payload.guestNationality).trim()
+    : null;
+
+  let guestPassportNumber = payload.guestPassportNumber
+    ? String(payload.guestPassportNumber).trim()
+    : null;
+
+  if (guestType === "pakistani") {
+    if (!guestIdCardNumber) {
+      throw new Error("guestIdCardNumber is required for pakistani guests.");
+    }
+    guestNationality = null;
+    guestPassportNumber = null;
+  } else {
+    if (!guestNationality) {
+      throw new Error("guestNationality is required for foreign guests.");
+    }
+    if (!guestPassportNumber) {
+      throw new Error("guestPassportNumber is required for foreign guests.");
+    }
+    guestIdCardNumber = null;
+  }
+
+  return {
+    guestType,
+    guestIdCardNumber,
+    guestNationality,
+    guestPassportNumber,
+  };
+}
+
+
 export async function createBooking(payload, role = "receptionist") {
   const room = await prisma.room.findFirst({
     where: { id: payload.roomId, isActive: true },
@@ -83,6 +124,14 @@ export async function createBooking(payload, role = "receptionist") {
 
   const discountPercent = validateDiscountByRole(payload.discountPercent, role);
   const pricing = computeTotals(room.pricePerNight, nights, discountPercent);
+ 
+  const {
+  guestType,
+  guestIdCardNumber,
+  guestNationality,
+  guestPassportNumber,
+ } = validateGuestIdentity(payload);
+
 
   const booking = await prisma.booking.create({
     data: {
@@ -90,6 +139,10 @@ export async function createBooking(payload, role = "receptionist") {
       guestFullName: payload.fullName,
       guestEmail: payload.email,
       guestPhone: payload.phone || "",
+      guestType,
+      guestIdCardNumber,
+      guestNationality,
+      guestPassportNumber,
       checkIn: payload.checkIn,
       checkOut: payload.checkOut,
       guests: payload.guests,
@@ -171,6 +224,10 @@ function normalizeBooking(b) {
       fullName: b.guestFullName,
       email: b.guestEmail,
       phone: b.guestPhone,
+      guestType: b.guestType ?? "pakistani",
+      idCardNumber: b.guestIdCardNumber ?? null,
+      nationality: b.guestNationality ?? null,
+      passportNumber: b.guestPassportNumber ?? null,
     },
     stay: {
       checkIn: b.checkIn,

@@ -30,6 +30,12 @@ model Booking {
   guestEmail      String
   guestPhone      String?
 
+  guestType           String   @default("pakistani") // pakistani | foreign
+  guestIdCardNumber   String?
+  guestNationality    String?
+  guestPassportNumber String?
+
+
   checkIn         String
   checkOut        String
   guests          Int

@@ -20,6 +20,12 @@ export default function BookingModal({ open, room, onClose, onConfirm }) {
     checkOut: tomorrow,
     guests: 1,
     specialRequests: "",
+
+    // NEW identity fields
+    guestType: "pakistani", // default
+    idCardNumber: "",
+    nationality: "",
+    passportNumber: "",
   });
 
   const [error, setError] = useState("");
@@ -30,23 +36,51 @@ export default function BookingModal({ open, room, onClose, onConfirm }) {
     setForm((p) => ({ ...p, [k]: v }));
   }
 
+  function setGuestType(nextType) {
+    setForm((p) => {
+      const t = nextType === "foreign" ? "foreign" : "pakistani";
+      // Optional hygiene: clear fields that are not relevant for selected type
+      if (t === "pakistani") {
+        return { ...p, guestType: t, nationality: "", passportNumber: "" };
+      }
+      return { ...p, guestType: t, idCardNumber: "" };
+    });
+  }
+
   function validate() {
     if (!form.fullName || !form.email || !form.phone) return "Please fill guest details.";
     if (!form.checkIn || !form.checkOut) return "Please select dates.";
     if (form.checkOut <= form.checkIn) return "Check-out must be after check-in.";
     if (Number(form.guests) < 1) return "Guests must be at least 1.";
     if (Number(form.guests) > room.capacity) return `Max guests for this room is ${room.capacity}.`;
+
+    // NEW conditional identity validation
+    if (form.guestType === "pakistani") {
+      if (!String(form.idCardNumber || "").trim()) return "Please enter CNIC / ID Card Number.";
+    } else if (form.guestType === "foreign") {
+      if (!String(form.nationality || "").trim()) return "Please enter nationality.";
+      if (!String(form.passportNumber || "").trim()) return "Please enter passport number.";
+    }
+
     return "";
   }
 
   async function submit() {
     const msg = validate();
     if (msg) return setError(msg);
+
     setError("");
+
+    // IMPORTANT: match backend payload keys exactly
     await onConfirm({
       roomId: room.id,
       ...form,
       guests: Number(form.guests),
+
+      guestType: form.guestType,
+      guestIdCardNumber: form.guestType === "pakistani" ? String(form.idCardNumber || "").trim() : "",
+      guestNationality: form.guestType === "foreign" ? String(form.nationality || "").trim() : "",
+      guestPassportNumber: form.guestType === "foreign" ? String(form.passportNumber || "").trim() : "",
     });
   }
 
@@ -71,6 +105,31 @@ export default function BookingModal({ open, room, onClose, onConfirm }) {
         <div className="grid gap-5 p-5 md:grid-cols-2">
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-900">Guest details</h3>
+
+            {/* NEW: Guest Type control */}
+            <div className="rounded-xl border p-3">
+              <div className="text-xs font-medium text-slate-700">Guest type</div>
+              <div className="mt-2 flex items-center gap-4 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="guestType"
+                    checked={form.guestType === "pakistani"}
+                    onChange={() => setGuestType("pakistani")}
+                  />
+                  Pakistani
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="guestType"
+                    checked={form.guestType === "foreign"}
+                    onChange={() => setGuestType("foreign")}
+                  />
+                  Foreign National
+                </label>
+              </div>
+            </div>
 
             <label className="block">
               <span className="text-xs text-slate-600">Full Name</span>
@@ -101,6 +160,41 @@ export default function BookingModal({ open, room, onClose, onConfirm }) {
                 placeholder="+92..."
               />
             </label>
+
+            {/* NEW: Conditional identity fields */}
+            {form.guestType === "pakistani" ? (
+              <label className="block">
+                <span className="text-xs text-slate-600">ID Card Number (CNIC)</span>
+                <input
+                  value={form.idCardNumber}
+                  onChange={(e) => update("idCardNumber", e.target.value)}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200"
+                  placeholder="e.g., 12345-1234567-1"
+                />
+              </label>
+            ) : (
+              <>
+                <label className="block">
+                  <span className="text-xs text-slate-600">Nationality</span>
+                  <input
+                    value={form.nationality}
+                    onChange={(e) => update("nationality", e.target.value)}
+                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200"
+                    placeholder="e.g., Canadian"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-xs text-slate-600">Passport Number</span>
+                  <input
+                    value={form.passportNumber}
+                    onChange={(e) => update("passportNumber", e.target.value)}
+                    className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-200"
+                    placeholder="e.g., AB1234567"
+                  />
+                </label>
+              </>
+            )}
           </div>
 
           <div className="space-y-3">

@@ -1,7 +1,56 @@
 import React from "react";
 
 export default function ReceiptCard({ booking }) {
-  const { guest, stay, room, pricing } = booking;
+  const { guest = {}, stay = {}, room = {}, pricing = {} } = booking || {};
+
+  // --- Identity fields: support multiple possible shapes (prevents "it doesn't show")
+  // Preferred (recommended backend): booking.guest.guestType / guestIdCardNumber / guestNationality / guestPassportNumber
+  // Fallback: booking.guestType / booking.guestIdCardNumber / booking.guestNationality / booking.guestPassportNumber
+  const guestTypeRaw =
+    guest.guestType ??
+    booking.guestType ??
+    guest.type ??
+    booking.type ??
+    "";
+
+  const guestType = String(guestTypeRaw || "").trim().toLowerCase(); // "pakistani" | "foreign" | ""
+
+  const cnic =
+    guest.guestIdCardNumber ??
+    booking.guestIdCardNumber ??
+    guest.idCardNumber ?? // fallback for older naming
+    guest.cnic ?? // fallback
+    booking.cnic ??
+    "";
+
+  const nationality =
+    guest.guestNationality ??
+    booking.guestNationality ??
+    guest.nationality ??
+    booking.nationality ??
+    "";
+
+  const passport =
+    guest.guestPassportNumber ??
+    booking.guestPassportNumber ??
+    guest.passportNumber ??
+    booking.passportNumber ??
+    "";
+
+  const hasCnic = String(cnic || "").trim().length > 0;
+  const hasNationality = String(nationality || "").trim().length > 0;
+  const hasPassport = String(passport || "").trim().length > 0;
+
+  // Show identity block only if backend returned something or guestType indicates it
+  const showPakistaniIdentity = guestType === "pakistani" && hasCnic;
+  const showForeignIdentity = guestType === "foreign" && (hasNationality || hasPassport);
+
+  // Pricing safety (avoid crash if backend didn't send numbers)
+  const pricePerNight = Number(pricing.pricePerNight || 0);
+  const nights = Number(pricing.nights || 0);
+  const subtotal = Number(pricing.subtotal || 0);
+  const tax = Number(pricing.tax || 0);
+  const total = Number(pricing.total || 0);
 
   return (
     <div className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -25,6 +74,22 @@ export default function ReceiptCard({ booking }) {
           <div className="text-sm text-slate-700">{guest.fullName}</div>
           <div className="text-sm text-slate-700">{guest.email}</div>
           <div className="text-sm text-slate-700">{guest.phone}</div>
+
+          {/* NEW: Identity fields (conditional + safe) */}
+          {showPakistaniIdentity ? (
+            <div className="pt-2 text-sm text-slate-700">
+              <div className="text-xs font-semibold text-slate-500">CNIC</div>
+              <div>{cnic}</div>
+            </div>
+          ) : null}
+
+          {showForeignIdentity ? (
+            <div className="pt-2 text-sm text-slate-700">
+              <div className="text-xs font-semibold text-slate-500">Foreign National</div>
+              {hasNationality ? <div>Nationality: {nationality}</div> : null}
+              {hasPassport ? <div>Passport: {passport}</div> : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="space-y-2">
@@ -50,17 +115,17 @@ export default function ReceiptCard({ booking }) {
         <div className="px-4 py-3 text-sm">
           <div className="flex justify-between py-1 text-slate-700">
             <span>
-              ${pricing.pricePerNight} × {pricing.nights} nights
+              ${pricePerNight} × {nights} nights
             </span>
-            <span>${pricing.subtotal.toFixed(2)}</span>
+            <span>${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between py-1 text-slate-700">
             <span>Tax (10%)</span>
-            <span>${pricing.tax.toFixed(2)}</span>
+            <span>${tax.toFixed(2)}</span>
           </div>
           <div className="mt-2 flex justify-between border-t pt-3 text-base font-semibold text-slate-900">
             <span>Total</span>
-            <span>${pricing.total.toFixed(2)}</span>
+            <span>${total.toFixed(2)}</span>
           </div>
         </div>
       </div>
