@@ -4,7 +4,7 @@ import {
   getBooking,
   listBookings,
   cancelBooking,
-  extendBooking,
+  checkoutBooking,
 } from "../services/bookingService.js";
 
 import { requireFields, isValidDateRange } from "../utils/validation.js";
@@ -95,32 +95,14 @@ router.patch("/:id/cancel", requireAuth, requireRole("receptionist", "admin"), a
   }
 });
 
-/**
- * Extend booking (staff)
- * receptionist/admin can extend
- */
-router.patch(
-  "/:id/extend",
-  requireAuth,
-  requireRole("receptionist", "admin"),
-  async (req, res) => {
-    try {
-      const body = req.body;
-
-      // thin validation only: must exist
-      const required = requireFields(body, ["newCheckOut"]);
-      if (!required.ok) {
-        return res.status(400).json({ ok: false, message: required.error });
-      }
-
-      const booking = await extendBooking(req.params.id, body.newCheckOut, req.user.role);
-
-      return res.json({ ok: true, booking });
-    } catch (e) {
-      return res.status(400).json({ ok: false, message: e.message });
-    }
+router.patch("/:id/checkout", requireAuth, requireRole("receptionist", "admin"), async (req, res) => {
+  try {
+    const booking = await checkoutBooking(req.params.id);
+    res.json({ ok: true, booking });
+  } catch (e) {
+    res.status(400).json({ ok: false, message: e.message });
   }
-);
+});
 
 
 export default router;

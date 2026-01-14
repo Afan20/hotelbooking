@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Container from "../components/Container.jsx";
-import { fetchBookings, cancelBooking } from "../api/bookingsApi.js";
+import { fetchBookings, cancelBooking, checkoutBooking } from "../api/bookingsApi.js";
 
 export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState(null);
+  const [checkoutId, setCheckoutId] = useState(null);
 
   async function loadBookings() {
     try {
@@ -25,6 +26,13 @@ export default function MyBookings() {
   useEffect(() => {
     loadBookings();
   }, []);
+
+  function statusBadgeClass(status) {
+    const s = String(status || "").trim().toLowerCase();
+    if (s === "confirmed") return "bg-emerald-50 text-emerald-700";
+    if (s === "checked_out") return "bg-blue-50 text-blue-700";
+    return "bg-slate-100 text-slate-700";
+  }
 
   async function onCancel(id) {
     const ok = window.confirm("Cancel this booking?");
@@ -47,10 +55,29 @@ export default function MyBookings() {
     }
   }
 
-  function statusBadgeClass(status) {
-    if (status === "confirmed") return "bg-emerald-50 text-emerald-700";
-    if (status === "checked_out") return "bg-blue-50 text-blue-700";
-    return "bg-slate-100 text-slate-700";
+  async function onCheckout(id) {
+    const ok = window.confirm("Checkout this booking?");
+    if (!ok) return;
+
+    try {
+      setError("");
+      setCheckoutId(id);
+
+      const res = await checkoutBooking(id);
+
+      if (res?.booking) {
+        setBookings((prev) => prev.map((b) => (b.id === id ? res.booking : b)));
+      } else {
+        // fallback if backend returns ok:true only
+        setBookings((prev) =>
+          prev.map((b) => (b.id === id ? { ...b, status: "checked_out" } : b))
+        );
+      }
+    } catch (e) {
+      setError(e.message || "Failed to checkout booking");
+    } finally {
+      setCheckoutId(null);
+    }
   }
 
   return (
@@ -98,8 +125,10 @@ export default function MyBookings() {
             </thead>
             <tbody>
               {bookings.map((b) => {
-                const isConfirmed = b.status === "confirmed";
+                const status = String(b.status || "").trim().toLowerCase();
+                const isConfirmed = status === "confirmed";
                 const isCancelling = cancellingId === b.id;
+                const isCheckingOut = checkoutId === b.id;
 
                 return (
                   <tr key={b.id} className="border-t">
@@ -131,13 +160,23 @@ export default function MyBookings() {
                       </Link>
 
                       {isConfirmed ? (
-                        <button
-                          onClick={() => onCancel(b.id)}
-                          disabled={isCancelling}
-                          className="inline-block rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          {isCancelling ? "Cancelling…" : "Cancel"}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => onCheckout(b.id)}
+                            disabled={isCheckingOut || isCancelling}
+                            className="inline-block rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+                          >
+                            {isCheckingOut ? "Checking out…" : "Checkout"}
+                          </button>
+
+                          <button
+                            onClick={() => onCancel(b.id)}
+                            disabled={isCancelling || isCheckingOut}
+                            className="inline-block rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            {isCancelling ? "Cancelling…" : "Cancel"}
+                          </button>
+                        </>
                       ) : null}
                     </td>
                   </tr>

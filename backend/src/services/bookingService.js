@@ -134,65 +134,32 @@ export async function cancelBooking(id) {
   return normalizeBooking(booking);
 }
 
-export async function extendBooking(id, newCheckOut, role = "receptionist") {
-  // 1) validate date format (service-level)
-  const outDate = new Date(newCheckOut);
-  if (Number.isNaN(outDate.getTime())) {
-    throw new Error("Invalid date format.");
-  }
 
-  // 2) get booking + room
+export async function checkoutBooking(id) {
+  if (!id) throw new Error("Missing booking id");
+
   const booking = await prisma.booking.findUnique({
     where: { id },
     include: { room: true },
   });
   if (!booking) throw new Error("Booking not found");
 
-  // 3) must be confirmed
   if (booking.status !== "confirmed") {
-    throw new Error("Only confirmed bookings can be extended.");
+    throw new Error("Only confirmed bookings can be checked out.");
   }
 
-  // 4) extension must extend, not shrink
-  const currentOut = new Date(booking.checkOut);
-  if (outDate.getTime() <= currentOut.getTime()) {
-    throw new Error("New check-out must be after current check-out.");
-  }
-
-  // 5) check-out must still be after check-in
-  const inDate = new Date(booking.checkIn);
-  if (outDate.getTime() <= inDate.getTime()) {
-    throw new Error("Check-out must be after check-in.");
-  }
-
-  // 6) availability check excluding this booking id
-  await assertRoomAvailable(booking.roomId, booking.checkIn, newCheckOut, booking.id);
-
-  // 7) recompute nights + totals using same logic
-  const nights = calcNights(booking.checkIn, newCheckOut);
-
-  // Preserve original discount percent; role is not used for discounts here
-  const discountPercent = Number(booking.discountPercent || 0);
-
-  const pricing = computeTotals(booking.room.pricePerNight, nights, discountPercent);
-
-  // 8) update booking
   const updated = await prisma.booking.update({
-    where: { id: booking.id },
+    where: { id },
     data: {
-      checkOut: newCheckOut,
-      nights,
-      subtotal: pricing.subtotal,
-      tax: pricing.tax,
-      total: pricing.total,
-      discountAmount: pricing.discountAmount,
-      // discountPercent remains unchanged
+      status: "checked_out",
+      checkedOutAt: new Date(),
     },
     include: { room: true },
   });
 
   return normalizeBooking(updated);
 }
+
 
 
 function normalizeBooking(b) {

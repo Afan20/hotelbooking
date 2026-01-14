@@ -17,10 +17,9 @@ export function cancelBooking(id) {
   return apiPatch(`/api/bookings/${id}/cancel`, {}, getToken());
 }
 
-// ✅ add
-export function extendBooking(id, newCheckOut) {
-  return apiPatch(`/api/bookings/${id}/extend`, { newCheckOut }, getToken());
+// NEW: staff checkout (admin + receptionist)
+export function checkoutBooking(id) {
+  return apiPatch(`/api/bookings/${id}/checkout`, {}, getToken());
 }
-
 
 
