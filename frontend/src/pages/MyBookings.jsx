@@ -68,7 +68,6 @@ export default function MyBookings() {
       if (res?.booking) {
         setBookings((prev) => prev.map((b) => (b.id === id ? res.booking : b)));
       } else {
-        // fallback if backend returns ok:true only
         setBookings((prev) =>
           prev.map((b) => (b.id === id ? { ...b, status: "checked_out" } : b))
         );
@@ -85,9 +84,7 @@ export default function MyBookings() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">My Bookings</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            All bookings stored in the system.
-          </p>
+          <p className="mt-1 text-sm text-slate-600">All bookings stored in the system.</p>
         </div>
         <Link
           to="/rooms"
@@ -123,6 +120,7 @@ export default function MyBookings() {
                 <th className="px-5 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {bookings.map((b) => {
                 const status = String(b.status || "").trim().toLowerCase();
@@ -132,13 +130,17 @@ export default function MyBookings() {
 
                 return (
                   <tr key={b.id} className="border-t">
-                    <td className="px-5 py-4 font-medium text-slate-900">{b.id}</td>
-                    <td className="px-5 py-4 text-slate-700">{b.guest.fullName}</td>
-                    <td className="px-5 py-4 text-slate-700">{b.room.name}</td>
-                    <td className="px-5 py-4 text-slate-700">
+                    <td className="px-5 py-6 font-medium text-slate-900">{b.id}</td>
+
+                    <td className="px-5 py-6 text-slate-700">{b.guest.fullName}</td>
+
+                    <td className="px-5 py-6 text-slate-700">{b.room.name}</td>
+
+                    <td className="px-5 py-6 text-slate-700">
                       {b.stay.checkIn} → {b.stay.checkOut}
                     </td>
-                    <td className="px-5 py-4">
+
+                    <td className="px-5 py-6">
                       <span
                         className={
                           "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold " +
@@ -148,36 +150,41 @@ export default function MyBookings() {
                         {b.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right font-semibold text-slate-900">
+
+                    <td className="px-5 py-6 text-right font-semibold text-slate-900">
                       ${Number(b.pricing?.total || 0).toFixed(2)}
                     </td>
-                    <td className="px-5 py-4 text-right space-x-2">
-                      <Link
-                        to={`/receipt/${b.id}`}
-                        className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                      >
-                        Receipt
-                      </Link>
 
-                      {isConfirmed ? (
-                        <>
-                          <button
-                            onClick={() => onCheckout(b.id)}
-                            disabled={isCheckingOut || isCancelling}
-                            className="inline-block rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
-                          >
-                            {isCheckingOut ? "Checking out…" : "Checkout"}
-                          </button>
+                    {/* ✅ FIXED: Better spacing & alignment for action buttons */}
+                    <td className="px-5 py-6">
+                      <div className="flex flex-col items-end gap-2">
+                        <Link
+                          to={`/receipt/${b.id}`}
+                          className="inline-flex w-28 justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                        >
+                          Receipt
+                        </Link>
 
-                          <button
-                            onClick={() => onCancel(b.id)}
-                            disabled={isCancelling || isCheckingOut}
-                            className="inline-block rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                          >
-                            {isCancelling ? "Cancelling…" : "Cancel"}
-                          </button>
-                        </>
-                      ) : null}
+                        {isConfirmed ? (
+                          <>
+                            <button
+                              onClick={() => onCheckout(b.id)}
+                              disabled={isCheckingOut || isCancelling}
+                              className="inline-flex w-28 justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                            >
+                              {isCheckingOut ? "Checking out…" : "Checkout"}
+                            </button>
+
+                            <button
+                              onClick={() => onCancel(b.id)}
+                              disabled={isCancelling || isCheckingOut}
+                              className="inline-flex w-28 justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                            >
+                              {isCancelling ? "Cancelling…" : "Cancel"}
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 );

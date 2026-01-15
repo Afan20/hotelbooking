@@ -86,13 +86,12 @@ export default function AdminBookings() {
           prev.map((x) => (x.id === editId ? res.booking : x))
         );
       } else {
-        // backend returned ok:true only
         await loadBookings();
       }
 
       closeEdit();
-    } catch (e2) {
-      setError(e2.message || "Failed to edit booking");
+    } catch (e) {
+      setError(e.message || "Failed to edit booking");
       setSavingEdit(false);
     }
   }
@@ -108,11 +107,14 @@ export default function AdminBookings() {
       const res = await adminCheckoutBooking(b.id);
 
       if (res?.booking) {
-        setBookings((prev) => prev.map((x) => (x.id === b.id ? res.booking : x)));
-      } else {
-        // fallback if backend returns ok:true only
         setBookings((prev) =>
-          prev.map((x) => (x.id === b.id ? { ...x, status: "checked_out" } : x))
+          prev.map((x) => (x.id === b.id ? res.booking : x))
+        );
+      } else {
+        setBookings((prev) =>
+          prev.map((x) =>
+            x.id === b.id ? { ...x, status: "checked_out" } : x
+          )
         );
       }
     } catch (e) {
@@ -126,18 +128,20 @@ export default function AdminBookings() {
     <Container>
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Admin Bookings</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            Admin Bookings
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
             Admin-only booking management: edit dates and checkout.
           </p>
         </div>
       </div>
 
-      {error ? (
+      {error && (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
-      ) : null}
+      )}
 
       {loading ? (
         <div className="mt-8 text-sm text-slate-600">Loading bookings…</div>
@@ -167,13 +171,19 @@ export default function AdminBookings() {
 
                 return (
                   <tr key={b.id} className="border-t">
-                    <td className="px-5 py-4 font-medium text-slate-900">{b.id}</td>
-                    <td className="px-5 py-4 text-slate-700">{b.guest?.fullName}</td>
-                    <td className="px-5 py-4 text-slate-700">{b.room?.name}</td>
-                    <td className="px-5 py-4 text-slate-700">
+                    <td className="px-5 py-6 font-medium text-slate-900">
+                      {b.id}
+                    </td>
+                    <td className="px-5 py-6 text-slate-700">
+                      {b.guest?.fullName}
+                    </td>
+                    <td className="px-5 py-6 text-slate-700">
+                      {b.room?.name}
+                    </td>
+                    <td className="px-5 py-6 text-slate-700">
                       {b.stay?.checkIn} → {b.stay?.checkOut}
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-6">
                       <span
                         className={
                           "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold " +
@@ -183,15 +193,17 @@ export default function AdminBookings() {
                         {b.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right font-semibold text-slate-900">
+                    <td className="px-5 py-6 text-right font-semibold text-slate-900">
                       ${Number(b.pricing?.total || 0).toFixed(2)}
                     </td>
-                    <td className="px-5 py-4 text-right space-x-2">
+
+                    {/* FIXED ACTIONS COLUMN */}
+                    <td className="px-5 py-6">
                       {isConfirmed ? (
-                        <>
+                        <div className="flex flex-col items-end gap-2">
                           <button
                             onClick={() => openEdit(b)}
-                            className="inline-block rounded-lg border px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                            className="inline-flex w-28 justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                           >
                             Edit
                           </button>
@@ -199,13 +211,15 @@ export default function AdminBookings() {
                           <button
                             onClick={() => onCheckout(b)}
                             disabled={isCheckingOut}
-                            className="inline-block rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+                            className="inline-flex w-28 justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60"
                           >
                             {isCheckingOut ? "Checking out…" : "Checkout"}
                           </button>
-                        </>
+                        </div>
                       ) : (
-                        <span className="text-xs text-slate-500">—</span>
+                        <div className="flex justify-end">
+                          <span className="text-xs text-slate-500">—</span>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -216,15 +230,17 @@ export default function AdminBookings() {
         </div>
       )}
 
-      {/* Edit Modal */}
-      {editOpen ? (
+      {/* EDIT MODAL */}
+      {editOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
           <div className="w-full max-w-lg rounded-2xl border bg-white p-6 shadow-lg">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Edit Booking</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Edit Booking
+                </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Booking #{editingBooking?.id} — update check-in/check-out dates.
+                  Booking #{editingBooking?.id}
                 </p>
               </div>
               <button
@@ -244,7 +260,7 @@ export default function AdminBookings() {
                   type="date"
                   value={editCheckIn}
                   onChange={(e) => setEditCheckIn(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
                 />
               </div>
 
@@ -256,23 +272,22 @@ export default function AdminBookings() {
                   type="date"
                   value={editCheckOut}
                   onChange={(e) => setEditCheckOut(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={closeEdit}
-                  disabled={savingEdit}
-                  className="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                  className="rounded-xl border px-4 py-2 text-sm font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit}
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
                 >
                   {savingEdit ? "Saving…" : "Save"}
                 </button>
@@ -280,7 +295,7 @@ export default function AdminBookings() {
             </form>
           </div>
         </div>
-      ) : null}
+      )}
     </Container>
   );
 }
