@@ -9,7 +9,29 @@ import authRoutes from "./routes/auth.routes.js";
 const app = express();
 
 app.use(express.json());
-app.use(cors({ origin: process.env.CORS_ORIGIN || "http://localhost:5173" }));
+
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  "http://localhost:5173",
+  "https://qvxpija-afan20s-projects.vercel.app",
+  "https://hotelbooking-pdqvxpija-afan20s-projects.vercel.app",
+  "https://wahcontinentalhotel.com",
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.options("*", cors());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
