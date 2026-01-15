@@ -8,8 +8,8 @@ const rooms = [
 
 async function main() {
   // 1) Seed users (admin + receptionist)
-  const adminEmail = "admin@aurorahotel.com";
-  const receptionistEmail = "receptionist@aurorahotel.com";
+  const adminEmail = "admin";
+  const receptionistEmail = "receptionist";
 
   await prisma.user.upsert({
     where: { email: adminEmail },
