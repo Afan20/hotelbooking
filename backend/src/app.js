@@ -18,20 +18,24 @@ const allowedOrigins = [
   "https://wahcontinentalhotel.com",
 ].filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const corsOptions = {
+  origin: (origin, cb) => {
+    // allow non-browser requests (Postman, Render health checks)
+    if (!origin) return cb(null, true);
 
-app.options("*", cors());
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+
+    // IMPORTANT: do NOT throw (causes 500). Just reject with "false".
+    return cb(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
