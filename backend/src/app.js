@@ -13,7 +13,7 @@ app.use(express.json());
 const allowedOrigins = [
   process.env.CORS_ORIGIN,
   "http://localhost:5173",
-  "https://qvxpija-afan20s-projects.vercel.app",
+  "https://hotelbooking-3dcuofv53-afan20s-projects.vercel.app",
   "https://hotelbooking-self-omega.vercel.app",
   "https://wahcontinentalhotel.com",
 ].filter(Boolean);
