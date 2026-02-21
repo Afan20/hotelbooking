@@ -29,6 +29,7 @@ model Booking {
   guestFullName   String
   guestEmail      String
   guestPhone      String?
+  guestPhoneE164  String?
 
   guestType           String   @default("pakistani") // pakistani | foreign
   guestIdCardNumber   String?
@@ -54,8 +55,12 @@ model Booking {
 
   roomId          String
   room            Room     @relation(fields: [roomId], references: [id])
+  conversations   Conversation[]
+  reviewRequests  ReviewRequest[]
 
   createdAt       DateTime @default(now())
+
+  @@index([guestPhoneE164])
 }
 
 
@@ -67,4 +72,95 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Amenity {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  description String
+  location    String?
+  hours       String?
+  rank        Int      @default(100)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PolicyItem {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  title     String
+  content   String
+  category  String   @default("general")
+  rank      Int      @default(100)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BotTemplate {
+  id        String   @id @default(cuid())
+  key       String
+  channel   String   @default("sms") // sms | whatsapp | both
+  language  String   @default("en")
+  purpose   String   // welcome | amenities | checkout_review | fallback
+  body      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, channel, language])
+  @@index([purpose, isActive])
+}
+
+model Conversation {
+  id           String      @id @default(cuid())
+  bookingId    String?
+  booking      Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  phoneE164    String
+  channel      String      // sms | whatsapp
+  status       String      @default("open") // open | closed | handoff
+  consentStatus String     @default("unknown") // unknown | opted_in | opted_out
+  guestName    String?
+  lastMessageAt DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  messages     BotMessage[]
+
+  @@index([phoneE164, status])
+  @@index([bookingId])
+}
+
+model BotMessage {
+  id               String       @id @default(cuid())
+  conversationId   String
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction        String       // inbound | outbound | system
+  sender           String       // guest | agent | staff
+  text             String
+  providerMessageId String?
+  intent           String?
+  meta             Json?
+  createdAt        DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model ReviewRequest {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  channel   String
+  phoneE164 String
+  reviewUrl String
+  status    String   @default("queued") // queued | sent | clicked | failed
+  sentAt    DateTime?
+  clickedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookingId, channel])
+  @@index([status, createdAt])
 }

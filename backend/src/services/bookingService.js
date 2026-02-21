@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { calcNights } from "../utils/pricing.js";
+import { normalizePhoneE164 } from "../utils/phone.js";
 
 // simple tax settings for MVP
 const TAX_RATE = 0.10;
@@ -139,6 +140,7 @@ export async function createBooking(payload, role = "receptionist") {
       guestFullName: payload.fullName,
       guestEmail: payload.email,
       guestPhone: payload.phone || "",
+      guestPhoneE164: normalizePhoneE164(payload.phone),
       guestType,
       guestIdCardNumber,
       guestNationality,
@@ -224,6 +226,7 @@ function normalizeBooking(b) {
       fullName: b.guestFullName,
       email: b.guestEmail,
       phone: b.guestPhone,
+      phoneE164: b.guestPhoneE164 ?? null,
       guestType: b.guestType ?? "pakistani",
       idCardNumber: b.guestIdCardNumber ?? null,
       nationality: b.guestNationality ?? null,

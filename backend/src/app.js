@@ -5,6 +5,7 @@ import roomsRoutes from "./routes/rooms.routes.js";
 import bookingsRoutes from "./routes/bookings.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import agentRoutes from "./routes/agent.routes.js";
 
 const app = express();
 
@@ -43,5 +44,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomsRoutes);
 app.use("/api/bookings", bookingsRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/agent", agentRoutes);
 
 export default app;
